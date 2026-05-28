@@ -1,498 +1,387 @@
-import { useState, useEffect } from "react";
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مساعد صانع المحتوى</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7c3aed">
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; direction: rtl; background: #f5f5f5; min-height: 100vh; }
+.header { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 1rem 1.5rem; }
+.header h1 { font-size: 20px; font-weight: 500; }
+.header p { font-size: 13px; color: #6b7280; margin-top: 2px; }
+.tabs { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; }
+.tab { padding: 6px 14px; border-radius: 8px; border: 1px solid #e5e7eb; background: transparent; cursor: pointer; font-size: 14px; color: #6b7280; white-space: nowrap; font-family: sans-serif; }
+.tab.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+.content { max-width: 720px; margin: 0 auto; padding: 1rem; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 12px; }
+input, select, textarea { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 14px; font-family: sans-serif; background: #f9fafb; }
+.btn { padding: 8px 16px; border-radius: 8px; border: 1px solid #d1d5db; background: #f9fafb; cursor: pointer; font-size: 14px; font-family: sans-serif; }
+.btn-primary { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+.btn-danger { color: #ef4444; }
+.btn-green { background: #059669; color: #fff; border-color: #059669; }
+.row { display: flex; gap: 8px; align-items: center; }
+.flex-1 { flex: 1; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stage-bar { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 10px; }
+.stage-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; border: 1px solid #e5e7eb; color: #6b7280; }
+.stage-pill.active { color: #fff; }
+.section { display: none; }
+.section.active { display: block; }
+.ai-messages { max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+.msg.user { background: #f3f4f6; align-self: flex-start; }
+.msg.ai { background: #7c3aed; color: #fff; align-self: flex-end; }
+.thumb-preview { border-radius: 12px; padding: 2rem; text-align: center; margin-bottom: 16px; }
+.thumb-main { font-size: 32px; font-weight: 700; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); line-height: 1.2; }
+.thumb-sub { font-size: 16px; opacity: 0.85; margin-top: 8px; }
+.tip { font-size: 13px; color: #6b7280; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
+.best-times div { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+label { font-size: 13px; color: #6b7280; display: block; margin-bottom: 4px; margin-top: 8px; }
+.top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+.backup-btns { display: flex; gap: 6px; }
+.stats-badge { font-size: 13px; color: #6b7280; background: #f3f4f6; padding: 6px 12px; border-radius: 8px; }
+.note-area { width: 100%; min-height: 80px; resize: vertical; }
+.priority-high { border-right: 4px solid #ef4444; }
+.priority-med { border-right: 4px solid #fbbf24; }
+.priority-low { border-right: 4px solid #34d399; }
+</style>
+</head>
+<body>
 
-const SUBJECTS = [
-  { id: "physics", name: "فيزياء", icon: "⚡", color: "#f472b6" },
-  { id: "science", name: "علوم", icon: "🔬", color: "#e879f9" },
-  { id: "math", name: "رياضيات", icon: "📐", color: "#c084fc" },
-  { id: "chemistry", name: "كيمياء", icon: "⚗️", color: "#f9a8d4" },
-  { id: "religion", name: "ديانة", icon: "📖", color: "#fbcfe8" },
-  { id: "english", name: "إنكليزي", icon: "🔤", color: "#f0abfc" },
-];
+<div class="header">
+  <div class="top-bar">
+    <div>
+      <h1>🎬 مساعد المحتوى</h1>
+      <p>منصتك الكاملة لتنظيم وإنتاج المحتوى</p>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <div class="stats-badge" id="stats"></div>
+      <div class="backup-btns">
+        <button class="btn btn-green" style="font-size:12px;padding:6px 10px" onclick="exportData()">📤 تصدير</button>
+        <button class="btn" style="font-size:12px;padding:6px 10px" onclick="document.getElementById('importFile').click()">📥 استيراد</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;width:auto" onchange="importData(event)">
+      </div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab(0)">💡 الأفكار</button>
+    <button class="tab" onclick="switchTab(1)">🎬 المشاريع</button>
+    <button class="tab" onclick="switchTab(2)">📅 التقويم</button>
+    <button class="tab" onclick="switchTab(3)">📝 الملاحظات</button>
+    <button class="tab" onclick="switchTab(4)">🖼️ الثامبنيل</button>
+  </div>
+</div>
 
-const QUOTES = [
-  "النجاح ليس نهاية الطريق، والفشل ليس نهاية الأمل 🌸",
-  "كل يوم هو فرصة جديدة لتكوني أفضل من أمس 💪",
-  "أنت أقوى مما تتخيلين، استمري ولا تستسلمي ✨",
-  "الجهد اليوم هو الراحة غداً، ثقي بنفسك 🌷",
-  "حلمك يستحق كل تعب، لا تتوقفي أبداً 🎯",
-  "كل درس تتعلمينه هو خطوة نحو مستقبل أجمل 🌟",
-  "الصبر مفتاح النجاح، وأنت على الطريق الصحيح 🦋",
-];
+<div class="content">
 
-function getQuoteOfDay() {
-  const idx = new Date().getDay() % QUOTES.length;
-  return QUOTES[idx];
+  <!-- الأفكار -->
+  <div class="section active" id="sec0">
+    <div class="card">
+      <div style="font-weight:500;margin-bottom:12px">💡 إضافة فكرة جديدة</div>
+      <div class="row" style="margin-bottom:8px">
+        <input class="flex-1" id="newIdea" placeholder="اكتب فكرتك هنا..." onkeydown="if(event.key==='Enter')addIdea()">
+        <select id="ideaPlat" style="width:auto">
+          <option>يوتيوب</option><option>إنستغرام</option><option>تيك توك</option><option>فيسبوك</option><option>تويتر</option>
+        </select>
+      </div>
+      <div class="row">
+        <select id="ideaPriority" style="width:auto">
+          <option value="high">🔴 عالية</option>
+          <option value="med" selected>🟡 متوسطة</option>
+          <option value="low">🟢 منخفضة</option>
+        </select>
+        <button class="btn btn-primary flex-1" onclick="addIdea()">+ إضافة الفكرة</button>
+      </div>
+    </div>
+    <div id="ideasList"></div>
+  </div>
+
+  <!-- المشاريع -->
+  <div class="section" id="sec1">
+    <div class="card">
+      <div style="font-weight:500;margin-bottom:12px">🎬 مشروع جديد</div>
+      <div class="row" style="margin-bottom:8px">
+        <input class="flex-1" id="newProj" placeholder="عنوان الفيديو..." onkeydown="if(event.key==='Enter')addProject()">
+        <select id="projPlat" style="width:auto">
+          <option>يوتيوب</option><option>إنستغرام</option><option>تيك توك</option><option>فيسبوك</option><option>تويتر</option>
+        </select>
+      </div>
+      <input id="projDesc" placeholder="ملاحظات أو وصف (اختياري)..." style="margin-bottom:8px">
+      <button class="btn btn-primary" style="width:100%" onclick="addProject()">+ إضافة المشروع</button>
+    </div>
+    <div id="projectsList"></div>
+  </div>
+
+  <!-- التقويم -->
+  <div class="section" id="sec2">
+    <div class="card">
+      <div style="font-weight:500;margin-bottom:12px">📅 جدولة منشور جديد</div>
+      <div class="grid2">
+        <input id="calTitle" placeholder="عنوان المحتوى...">
+        <select id="calPlat"><option>يوتيوب</option><option>إنستغرام</option><option>تيك توك</option><option>فيسبوك</option><option>تويتر</option></select>
+        <input type="date" id="calDate">
+        <input type="time" id="calTime" value="15:00">
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px;width:100%" onclick="addEvent()">+ جدولة</button>
+    </div>
+    <div class="card">
+      <div style="font-weight:500;margin-bottom:12px">⏰ أفضل أوقات النشر</div>
+      <div class="best-times">
+        <div><span style="color:#6b7280">يوتيوب</span><span>الجمعة - السبت، 2 - 4 مساءً</span></div>
+        <div><span style="color:#6b7280">إنستغرام</span><span>الثلاثاء - الخميس، 11ص - 1م</span></div>
+        <div><span style="color:#6b7280">تيك توك</span><span>يومياً، 7 - 9 مساءً</span></div>
+        <div><span style="color:#6b7280">فيسبوك</span><span>الأربعاء، 1 - 3 ظهراً</span></div>
+        <div><span style="color:#6b7280">تويتر</span><span>الإثنين - الجمعة، 9 - 10 صباحاً</span></div>
+      </div>
+    </div>
+    <div id="calendarList"></div>
+  </div>
+
+  <!-- الملاحظات -->
+  <div class="section" id="sec3">
+    <div class="card">
+      <div style="font-weight:500;margin-bottom:12px">📝 ملاحظة جديدة</div>
+      <input id="noteTitle" placeholder="عنوان الملاحظة..." style="margin-bottom:8px">
+      <textarea id="noteBody" class="note-area" placeholder="اكتب ملاحظتك هنا..."></textarea>
+      <button class="btn btn-primary" style="margin-top:8px;width:100%" onclick="addNote()">+ حفظ الملاحظة</button>
+    </div>
+    <div id="notesList"></div>
+  </div>
+
+  <!-- الثامبنيل -->
+  <div class="section" id="sec4">
+    <div class="card">
+      <div style="font-weight:500;margin-bottom:12px">🖼️ مولّد أفكار الثامبنيل</div>
+      <label>موضوع الفيديو</label>
+      <input id="thumbTopic" placeholder="مثال: أفضل 10 تطبيقات للإنتاجية...">
+      <label>الأسلوب المطلوب</label>
+      <select id="thumbStyle">
+        <option>عصري ومثير</option><option>بسيط واحترافي</option><option>ملوّن وجذاب</option><option>داكن وأنيق</option><option>مضحك وترفيهي</option>
+      </select>
+      <label>لون رئيسي مفضل (اختياري)</label>
+      <input type="color" id="thumbColor" value="#7c3aed" style="width:60px;height:36px;padding:2px;cursor:pointer">
+      <button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="generateThumb()">✨ ولّد فكرة الثامبنيل</button>
+    </div>
+    <div id="thumbResult"></div>
+    <div id="thumbHistory"></div>
+  </div>
+
+</div>
+
+<script>
+const STAGES = ["فكرة","سكريبت","تصوير","مونتاج","جاهز"];
+const COLORS = ["#a78bfa","#60a5fa","#fbbf24","#f87171","#34d399"];
+
+let ideas = JSON.parse(localStorage.getItem('ideas')||'[]');
+let projects = JSON.parse(localStorage.getItem('projects')||'[]');
+let calendar = JSON.parse(localStorage.getItem('cal')||'[]');
+let notes = JSON.parse(localStorage.getItem('notes')||'[]');
+let thumbHistory = JSON.parse(localStorage.getItem('thumbHistory')||'[]');
+
+function save() {
+  localStorage.setItem('ideas', JSON.stringify(ideas));
+  localStorage.setItem('projects', JSON.stringify(projects));
+  localStorage.setItem('cal', JSON.stringify(calendar));
+  localStorage.setItem('notes', JSON.stringify(notes));
+  localStorage.setItem('thumbHistory', JSON.stringify(thumbHistory));
+  const done = calendar.filter(e=>e.done).length;
+  document.getElementById('stats').textContent = `💡 ${ideas.length} | 🎬 ${projects.length} | 📅 ${calendar.length-done} قادم`;
 }
 
-export default function App() {
-  const [screen, setScreen] = useState("home");
-  const [examDate, setExamDate] = useState("");
-  const [daysLeft, setDaysLeft] = useState(null);
-  const [activeSubject, setActiveSubject] = useState(null);
-  const [schedules, setSchedules] = useState({});
-  const [notes, setNotes] = useState({});
-  const [noteInput, setNoteInput] = useState("");
-  const [scheduleInput, setScheduleInput] = useState({ day: "", time: "", duration: "" });
-  const [activeTab, setActiveTab] = useState("schedule");
-
-  useEffect(() => {
-    if (examDate) {
-      const diff = Math.ceil((new Date(examDate) - new Date()) / (1000 * 60 * 60 * 24));
-      setDaysLeft(diff > 0 ? diff : 0);
-    }
-  }, [examDate]);
-
-  const addSchedule = () => {
-    if (!scheduleInput.day || !scheduleInput.time) return;
-    const key = activeSubject;
-    setSchedules(prev => ({
-      ...prev,
-      [key]: [...(prev[key] || []), { ...scheduleInput, id: Date.now() }]
-    }));
-    setScheduleInput({ day: "", time: "", duration: "" });
-  };
-
-  const addNote = () => {
-    if (!noteInput.trim()) return;
-    const key = activeSubject;
-    setNotes(prev => ({
-      ...prev,
-      [key]: [...(prev[key] || []), { text: noteInput, id: Date.now() }]
-    }));
-    setNoteInput("");
-  };
-
-  const deleteNote = (subj, id) => {
-    setNotes(prev => ({ ...prev, [subj]: prev[subj].filter(n => n.id !== id) }));
-  };
-
-  const deleteSchedule = (subj, id) => {
-    setSchedules(prev => ({ ...prev, [subj]: prev[subj].filter(s => s.id !== id) }));
-  };
-
-  const allSchedules = SUBJECTS.flatMap(s =>
-    (schedules[s.id] || []).map(e => ({ ...e, subject: s.name, color: s.color, icon: s.icon }))
-  );
-
-  const styles = {
-    app: {
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #f3e8ff 100%)",
-      fontFamily: "'Segoe UI', sans-serif",
-      direction: "rtl",
-      position: "relative",
-      overflow: "hidden",
-    },
-    watermark: {
-      position: "fixed",
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      fontSize: "72px",
-      fontWeight: "900",
-      color: "rgba(236, 72, 153, 0.06)",
-      letterSpacing: "8px",
-      pointerEvents: "none",
-      zIndex: 0,
-      whiteSpace: "nowrap",
-    },
-    content: { position: "relative", zIndex: 1 },
-    header: {
-      background: "linear-gradient(135deg, #ec4899, #a855f7)",
-      padding: "16px 20px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      boxShadow: "0 4px 15px rgba(236,72,153,0.3)",
-    },
-    logo: { color: "#fff", fontSize: "22px", fontWeight: "900", letterSpacing: "3px" },
-    backBtn: {
-      background: "rgba(255,255,255,0.2)",
-      border: "none",
-      color: "#fff",
-      borderRadius: "12px",
-      padding: "6px 14px",
-      cursor: "pointer",
-      fontSize: "14px",
-    },
-    grid: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: "16px",
-      padding: "20px",
-    },
-    card: {
-      background: "#fff",
-      borderRadius: "20px",
-      padding: "24px 16px",
-      textAlign: "center",
-      cursor: "pointer",
-      boxShadow: "0 4px 15px rgba(236,72,153,0.1)",
-      border: "1.5px solid rgba(236,72,153,0.15)",
-      transition: "transform 0.15s",
-    },
-    cardIcon: { fontSize: "36px", marginBottom: "8px" },
-    cardTitle: { fontSize: "15px", fontWeight: "700", color: "#be185d" },
-    cardSub: { fontSize: "12px", color: "#9d174d", marginTop: "4px" },
-    section: { padding: "20px" },
-    input: {
-      width: "100%",
-      padding: "12px 16px",
-      borderRadius: "14px",
-      border: "1.5px solid #f9a8d4",
-      background: "#fff",
-      fontSize: "15px",
-      color: "#831843",
-      outline: "none",
-      boxSizing: "border-box",
-      marginBottom: "12px",
-      direction: "rtl",
-    },
-    btn: {
-      background: "linear-gradient(135deg, #ec4899, #a855f7)",
-      color: "#fff",
-      border: "none",
-      borderRadius: "14px",
-      padding: "12px 24px",
-      fontSize: "15px",
-      fontWeight: "700",
-      cursor: "pointer",
-      width: "100%",
-    },
-    counter: {
-      background: "linear-gradient(135deg, #ec4899, #a855f7)",
-      borderRadius: "24px",
-      padding: "32px",
-      textAlign: "center",
-      margin: "20px",
-      color: "#fff",
-    },
-    dayNum: { fontSize: "72px", fontWeight: "900", lineHeight: 1 },
-    dayLabel: { fontSize: "18px", marginTop: "8px", opacity: 0.9 },
-    subjCard: {
-      background: "#fff",
-      borderRadius: "16px",
-      padding: "16px",
-      marginBottom: "12px",
-      display: "flex",
-      alignItems: "center",
-      gap: "12px",
-      cursor: "pointer",
-      boxShadow: "0 2px 10px rgba(236,72,153,0.08)",
-      border: "1.5px solid rgba(236,72,153,0.1)",
-    },
-    subjIcon: { fontSize: "28px" },
-    subjName: { fontSize: "16px", fontWeight: "700", color: "#be185d" },
-    noteItem: {
-      background: "#fdf2f8",
-      borderRadius: "12px",
-      padding: "10px 14px",
-      marginBottom: "8px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      border: "1px solid #f9a8d4",
-    },
-    noteText: { fontSize: "14px", color: "#831843", flex: 1 },
-    delBtn: {
-      background: "none",
-      border: "none",
-      color: "#ec4899",
-      cursor: "pointer",
-      fontSize: "18px",
-      marginRight: "8px",
-    },
-    quote: {
-      background: "linear-gradient(135deg, #fdf2f8, #f3e8ff)",
-      border: "2px solid #f9a8d4",
-      borderRadius: "20px",
-      padding: "28px 24px",
-      margin: "20px",
-      textAlign: "center",
-    },
-    quoteText: { fontSize: "18px", color: "#be185d", fontWeight: "600", lineHeight: 1.6 },
-    tabs: { display: "flex", gap: "8px", marginBottom: "16px" },
-    tab: (active) => ({
-      flex: 1,
-      padding: "10px",
-      borderRadius: "12px",
-      border: "none",
-      cursor: "pointer",
-      fontWeight: "700",
-      fontSize: "13px",
-      background: active ? "linear-gradient(135deg, #ec4899, #a855f7)" : "#fdf2f8",
-      color: active ? "#fff" : "#be185d",
-    }),
-    schedItem: {
-      background: "#fdf2f8",
-      borderRadius: "12px",
-      padding: "10px 14px",
-      marginBottom: "8px",
-      border: "1px solid #f9a8d4",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    allSchedItem: (color) => ({
-      background: "#fff",
-      borderRadius: "12px",
-      padding: "12px 16px",
-      marginBottom: "10px",
-      borderRight: `4px solid ${color}`,
-      boxShadow: "0 2px 8px rgba(236,72,153,0.08)",
-    }),
-  };
-
-  if (screen === "home") return (
-    <div style={styles.app}>
-      <div style={styles.watermark}>LAMA.BAC</div>
-      <div style={styles.content}>
-        <div style={styles.header}>
-          <div style={styles.logo}>🌸 LAMA.BAC</div>
-          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "13px" }}>مرحباً يا لمى 💕</div>
-        </div>
-        <div style={styles.grid}>
-          <div style={styles.card} onClick={() => setScreen("counter")}>
-            <div style={styles.cardIcon}>⏳</div>
-            <div style={styles.cardTitle}>العداد التنازلي</div>
-            <div style={styles.cardSub}>أيام الامتحان</div>
-          </div>
-          <div style={styles.card} onClick={() => setScreen("schedule")}>
-            <div style={styles.cardIcon}>📅</div>
-            <div style={styles.cardTitle}>برنامج الدراسة</div>
-            <div style={styles.cardSub}>نظّمي وقتك</div>
-          </div>
-          <div style={styles.card} onClick={() => setScreen("notes")}>
-            <div style={styles.cardIcon}>📝</div>
-            <div style={styles.cardTitle}>ملاحظاتي</div>
-            <div style={styles.cardSub}>أفكار ومراجعات</div>
-          </div>
-          <div style={styles.card} onClick={() => setScreen("motivation")}>
-            <div style={styles.cardIcon}>💪</div>
-            <div style={styles.cardTitle}>دعم نفسي</div>
-            <div style={styles.cardSub}>اقتباس اليوم</div>
-          </div>
-        </div>
-        <div style={{ margin: "0 20px" }}>
-          {daysLeft !== null && (
-            <div style={{ ...styles.counter, padding: "16px", margin: 0 }}>
-              <span style={{ fontSize: "14px", opacity: 0.9 }}>⏰ تبقى </span>
-              <span style={{ fontSize: "22px", fontWeight: "900" }}>{daysLeft}</span>
-              <span style={{ fontSize: "14px", opacity: 0.9 }}> يوم للامتحان!</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  if (screen === "counter") return (
-    <div style={styles.app}>
-      <div style={styles.watermark}>LAMA.BAC</div>
-      <div style={styles.content}>
-        <div style={styles.header}>
-          <div style={styles.logo}>⏳ العداد التنازلي</div>
-          <button style={styles.backBtn} onClick={() => setScreen("home")}>← رجوع</button>
-        </div>
-        <div style={styles.section}>
-          <label style={{ display: "block", marginBottom: "8px", color: "#be185d", fontWeight: "700" }}>
-            📅 تاريخ بدء الامتحانات
-          </label>
-          <input type="date" style={styles.input} value={examDate}
-            onChange={e => setExamDate(e.target.value)} />
-        </div>
-        {daysLeft !== null && (
-          <div style={styles.counter}>
-            <div style={styles.dayNum}>{daysLeft}</div>
-            <div style={styles.dayLabel}>
-              {daysLeft === 0 ? "🎉 اليوم هو يوم الامتحان!" : `يوم متبقي حتى الامتحان 📚`}
-            </div>
-            <div style={{ marginTop: "16px", fontSize: "13px", opacity: 0.8 }}>
-              {daysLeft > 0 ? "استغلي كل يوم 💪" : "بالتوفيق يا بطلة! 🌸"}
-            </div>
-          </div>
-        )}
-        {!daysLeft && !examDate && (
-          <div style={{ textAlign: "center", padding: "40px 20px", color: "#be185d", fontSize: "16px" }}>
-            حددي تاريخ امتحاناتك لتبدأ العداد 🌸
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  if (screen === "schedule") return (
-    <div style={styles.app}>
-      <div style={styles.watermark}>LAMA.BAC</div>
-      <div style={styles.content}>
-        <div style={styles.header}>
-          <div style={styles.logo}>📅 برنامج الدراسة</div>
-          <button style={styles.backBtn} onClick={() => setScreen("home")}>← رجوع</button>
-        </div>
-        <div style={styles.section}>
-          <div style={styles.tabs}>
-            <button style={styles.tab(activeTab === "schedule")} onClick={() => setActiveTab("schedule")}>
-              📚 المواد
-            </button>
-            <button style={styles.tab(activeTab === "final")} onClick={() => setActiveTab("final")}>
-              📋 البرنامج النهائي
-            </button>
-          </div>
-
-          {activeTab === "schedule" && !activeSubject && SUBJECTS.map(s => (
-            <div key={s.id} style={styles.subjCard} onClick={() => setActiveSubject(s.id)}>
-              <span style={styles.subjIcon}>{s.icon}</span>
-              <div>
-                <div style={styles.subjName}>{s.name}</div>
-                <div style={{ fontSize: "12px", color: "#9d174d" }}>
-                  {(schedules[s.id] || []).length} حصة مضافة
-                </div>
-              </div>
-              <span style={{ marginRight: "auto", color: "#ec4899" }}>←</span>
-            </div>
-          ))}
-
-          {activeTab === "schedule" && activeSubject && (() => {
-            const s = SUBJECTS.find(x => x.id === activeSubject);
-            return (
-              <div>
-                <button style={{ ...styles.backBtn, background: "#fdf2f8", color: "#be185d", marginBottom: "16px" }}
-                  onClick={() => setActiveSubject(null)}>
-                  ← {s.name}
-                </button>
-                <select style={styles.input} value={scheduleInput.day}
-                  onChange={e => setScheduleInput(p => ({ ...p, day: e.target.value }))}>
-                  <option value="">📅 اختاري اليوم</option>
-                  {["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"].map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-                <input type="time" style={styles.input} value={scheduleInput.time}
-                  onChange={e => setScheduleInput(p => ({ ...p, time: e.target.value }))}
-                  placeholder="الوقت" />
-                <input type="text" style={styles.input} value={scheduleInput.duration}
-                  onChange={e => setScheduleInput(p => ({ ...p, duration: e.target.value }))}
-                  placeholder="المدة (مثال: ساعتان)" />
-                <button style={styles.btn} onClick={addSchedule}>+ إضافة حصة</button>
-                <div style={{ marginTop: "16px" }}>
-                  {(schedules[activeSubject] || []).map(item => (
-                    <div key={item.id} style={styles.schedItem}>
-                      <div>
-                        <div style={{ fontWeight: "700", color: "#be185d", fontSize: "14px" }}>{item.day}</div>
-                        <div style={{ fontSize: "12px", color: "#9d174d" }}>🕐 {item.time} {item.duration && `· ${item.duration}`}</div>
-                      </div>
-                      <button style={styles.delBtn} onClick={() => deleteSchedule(activeSubject, item.id)}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
-          {activeTab === "final" && (
-            <div>
-              {allSchedules.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px", color: "#be185d" }}>
-                  لم تضيفي أي حصص بعد 📚
-                </div>
-              ) : allSchedules.map((item, i) => (
-                <div key={i} style={styles.allSchedItem(item.color)}>
-                  <div style={{ fontWeight: "700", color: "#be185d", fontSize: "14px" }}>
-                    {item.icon} {item.subject}
-                  </div>
-                  <div style={{ fontSize: "13px", color: "#9d174d", marginTop: "4px" }}>
-                    📅 {item.day} · 🕐 {item.time} {item.duration && `· ${item.duration}`}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  if (screen === "notes") return (
-    <div style={styles.app}>
-      <div style={styles.watermark}>LAMA.BAC</div>
-      <div style={styles.content}>
-        <div style={styles.header}>
-          <div style={styles.logo}>📝 ملاحظاتي</div>
-          <button style={styles.backBtn} onClick={() => { setScreen("home"); setActiveSubject(null); }}>← رجوع</button>
-        </div>
-        <div style={styles.section}>
-          {!activeSubject && SUBJECTS.map(s => (
-            <div key={s.id} style={styles.subjCard} onClick={() => setActiveSubject(s.id)}>
-              <span style={styles.subjIcon}>{s.icon}</span>
-              <div>
-                <div style={styles.subjName}>{s.name}</div>
-                <div style={{ fontSize: "12px", color: "#9d174d" }}>
-                  {(notes[s.id] || []).length} ملاحظة
-                </div>
-              </div>
-              <span style={{ marginRight: "auto", color: "#ec4899" }}>←</span>
-            </div>
-          ))}
-
-          {activeSubject && (() => {
-            const s = SUBJECTS.find(x => x.id === activeSubject);
-            return (
-              <div>
-                <button style={{ ...styles.backBtn, background: "#fdf2f8", color: "#be185d", marginBottom: "16px" }}
-                  onClick={() => setActiveSubject(null)}>
-                  ← {s.name}
-                </button>
-                <textarea
-                  style={{ ...styles.input, height: "90px", resize: "none" }}
-                  value={noteInput}
-                  onChange={e => setNoteInput(e.target.value)}
-                  placeholder={`أضيفي ملاحظة عن ${s.name}...`}
-                />
-                <button style={styles.btn} onClick={addNote}>+ إضافة ملاحظة</button>
-                <div style={{ marginTop: "16px" }}>
-                  {(notes[activeSubject] || []).map(n => (
-                    <div key={n.id} style={styles.noteItem}>
-                      <span style={styles.noteText}>{n.text}</span>
-                      <button style={styles.delBtn} onClick={() => deleteNote(activeSubject, n.id)}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      </div>
-    </div>
-  );
-
-  if (screen === "motivation") return (
-    <div style={styles.app}>
-      <div style={styles.watermark}>LAMA.BAC</div>
-      <div style={styles.content}>
-        <div style={styles.header}>
-          <div style={styles.logo}>💪 دعم نفسي</div>
-          <button style={styles.backBtn} onClick={() => setScreen("home")}>← رجوع</button>
-        </div>
-        <div style={{ padding: "30px 20px", textAlign: "center" }}>
-          <div style={{ fontSize: "64px", marginBottom: "16px" }}>🌸</div>
-          <div style={{ fontSize: "15px", color: "#be185d", marginBottom: "8px", fontWeight: "700" }}>
-            اقتباس اليوم
-          </div>
-        </div>
-        <div style={styles.quote}>
-          <div style={styles.quoteText}>{getQuoteOfDay()}</div>
-        </div>
-        <div style={{ textAlign: "center", padding: "24px", color: "#9d174d", fontSize: "14px" }}>
-          تذكري دائماً: أنت قادرة على تحقيق كل ما تحلمين به 💕
-        </div>
-        <div style={{ padding: "0 20px" }}>
-          {QUOTES.filter((_, i) => i !== new Date().getDay() % QUOTES.length).map((q, i) => (
-            <div key={i} style={{ ...styles.quote, padding: "16px 20px", margin: "0 0 12px" }}>
-              <div style={{ fontSize: "14px", color: "#be185d" }}>{q}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+function exportData() {
+  const data = { ideas, projects, calendar, notes, thumbHistory, exportDate: new Date().toLocaleDateString('ar') };
+  const a = document.createElement('a');
+  a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data, null, 2));
+  a.download = 'content-backup-' + Date.now() + '.json';
+  a.click();
 }
+
+function importData(e) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      ideas = d.ideas || [];
+      projects = d.projects || [];
+      calendar = d.calendar || [];
+      notes = d.notes || [];
+      thumbHistory = d.thumbHistory || [];
+      save(); renderAll();
+      alert('✅ تم الاستيراد بنجاح! تم استرجاع بياناتك.');
+    } catch(e) { alert('❌ الملف غير صالح، تأكد من اختيار ملف النسخة الاحتياطية الصحيح.'); }
+  };
+  reader.readAsText(e.target.files[0]);
+  e.target.value = '';
+}
+
+function switchTab(i) {
+  document.querySelectorAll('.tab').forEach((t,j) => t.classList.toggle('active', i===j));
+  document.querySelectorAll('.section').forEach((s,j) => s.classList.toggle('active', i===j));
+}
+
+// الأفكار
+function addIdea() {
+  const t = document.getElementById('newIdea').value.trim();
+  if (!t) return;
+  ideas.unshift({ id: Date.now(), text: t, platform: document.getElementById('ideaPlat').value, priority: document.getElementById('ideaPriority').value, date: new Date().toLocaleDateString('ar') });
+  document.getElementById('newIdea').value = '';
+  save(); renderIdeas();
+}
+
+function renderIdeas() {
+  const priorityClass = { high: 'priority-high', med: 'priority-med', low: 'priority-low' };
+  const priorityLabel = { high: '🔴 عالية', med: '🟡 متوسطة', low: '🟢 منخفضة' };
+  document.getElementById('ideasList').innerHTML = ideas.length ? ideas.map(idea => `
+    <div class="card ${priorityClass[idea.priority||'med']}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1">
+          <div style="font-size:15px;margin-bottom:4px">${idea.text}</div>
+          <div style="font-size:12px;color:#6b7280">📍 ${idea.platform} &nbsp;•&nbsp; ${priorityLabel[idea.priority||'med']} &nbsp;•&nbsp; ${idea.date||''}</div>
+        </div>
+        <button class="btn btn-danger" style="padding:4px 8px;margin-right:8px" onclick="ideas=ideas.filter(x=>x.id!=${idea.id});save();renderIdeas()">🗑</button>
+      </div>
+    </div>`).join('') : '<div class="card" style="text-align:center;color:#6b7280">لا توجد أفكار بعد، أضف أولى أفكارك!</div>';
+}
+
+// المشاريع
+function addProject() {
+  const t = document.getElementById('newProj').value.trim();
+  if (!t) return;
+  projects.unshift({ id: Date.now(), title: t, platform: document.getElementById('projPlat').value, desc: document.getElementById('projDesc').value, stage: 0, date: new Date().toLocaleDateString('ar') });
+  document.getElementById('newProj').value = '';
+  document.getElementById('projDesc').value = '';
+  save(); renderProjects();
+}
+
+function renderProjects() {
+  document.getElementById('projectsList').innerHTML = projects.length ? projects.map(p => `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div>
+          <div style="font-weight:500">${p.title}</div>
+          <div style="font-size:12px;color:#6b7280">${p.platform}${p.desc?' • '+p.desc:''}</div>
+        </div>
+        <button class="btn btn-danger" style="padding:4px 8px" onclick="projects=projects.filter(x=>x.id!=${p.id});save();renderProjects()">🗑</button>
+      </div>
+      <div class="stage-bar">
+        ${STAGES.map((s,i) => `<div class="stage-pill ${i===p.stage?'active':''}" style="${i===p.stage?'background:'+COLORS[i]+';border-color:'+COLORS[i]:i<p.stage?'border-color:'+COLORS[i]+';color:'+COLORS[i]:''}">${i<p.stage?'✓ ':''}${s}</div>`).join('')}
+      </div>
+      ${p.stage < 4
+        ? `<button class="btn btn-primary" style="margin-top:10px;font-size:13px" onclick="advStage(${p.id})">التالي: ${STAGES[p.stage+1]} ←</button>`
+        : '<div style="margin-top:10px;color:#34d399;font-weight:500">✅ جاهز للنشر!</div>'}
+    </div>`).join('') : '<div class="card" style="text-align:center;color:#6b7280">لا توجد مشاريع بعد!</div>';
+}
+
+function advStage(id) {
+  projects = projects.map(p => p.id===id && p.stage<4 ? {...p, stage: p.stage+1} : p);
+  save(); renderProjects();
+}
+
+// التقويم
+function addEvent() {
+  const t = document.getElementById('calTitle').value.trim();
+  const d = document.getElementById('calDate').value;
+  if (!t || !d) { alert('يرجى إدخال العنوان والتاريخ'); return; }
+  calendar.push({ id: Date.now(), title: t, platform: document.getElementById('calPlat').value, date: d, time: document.getElementById('calTime').value, done: false });
+  document.getElementById('calTitle').value = ''; document.getElementById('calDate').value = '';
+  save(); renderCalendar();
+}
+
+function renderCalendar() {
+  const today = new Date().toISOString().split('T')[0];
+  const sorted = [...calendar].sort((a,b) => a.date.localeCompare(b.date));
+  document.getElementById('calendarList').innerHTML = sorted.length ? sorted.map(ev => {
+    const overdue = !ev.done && ev.date < today;
+    return `<div class="card" style="opacity:${ev.done?0.6:1};border-right:4px solid ${overdue?'#ef4444':ev.done?'#34d399':'#7c3aed'}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:500;text-decoration:${ev.done?'line-through':'none'}">${ev.title}</div>
+          <div style="font-size:12px;color:#6b7280">${ev.platform} • ${ev.date} • ${ev.time}${overdue?' • <span style="color:#ef4444">متأخر!</span>':''}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn" style="padding:4px 8px" onclick="toggleDone(${ev.id})">${ev.done?'✅':'⬜'}</button>
+          <button class="btn btn-danger" style="padding:4px 8px" onclick="calendar=calendar.filter(x=>x.id!=${ev.id});save();renderCalendar()">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="card" style="text-align:center;color:#6b7280">لا توجد جدولة بعد!</div>';
+}
+
+function toggleDone(id) {
+  calendar = calendar.map(e => e.id===id ? {...e, done: !e.done} : e);
+  save(); renderCalendar();
+}
+
+// الملاحظات
+function addNote() {
+  const t = document.getElementById('noteTitle').value.trim();
+  const b = document.getElementById('noteBody').value.trim();
+  if (!t) return;
+  notes.unshift({ id: Date.now(), title: t, body: b, date: new Date().toLocaleDateString('ar') });
+  document.getElementById('noteTitle').value = '';
+  document.getElementById('noteBody').value = '';
+  save(); renderNotes();
+}
+
+function renderNotes() {
+  document.getElementById('notesList').innerHTML = notes.length ? notes.map(n => `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1">
+          <div style="font-weight:500;margin-bottom:4px">${n.title}</div>
+          <div style="font-size:14px;color:#374151;white-space:pre-wrap">${n.body}</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:6px">${n.date}</div>
+        </div>
+        <button class="btn btn-danger" style="padding:4px 8px;margin-right:8px" onclick="notes=notes.filter(x=>x.id!=${n.id});save();renderNotes()">🗑</button>
+      </div>
+    </div>`).join('') : '<div class="card" style="text-align:center;color:#6b7280">لا توجد ملاحظات بعد!</div>';
+}
+
+// الثامبنيل
+async function generateThumb() {
+  const topic = document.getElementById('thumbTopic').value.trim();
+  const style = document.getElementById('thumbStyle').value;
+  const color = document.getElementById('thumbColor').value;
+  if (!topic) { alert('يرجى إدخال موضوع الفيديو'); return; }
+  const res = document.getElementById('thumbResult');
+  res.innerHTML = '<div class="card" style="text-align:center;color:#6b7280">⏳ جاري توليد فكرة الثامبنيل...</div>';
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: 'أنت متخصص في تصميم ثامبنيلات يوتيوب. أجب بصيغة JSON فقط بدون أي نص إضافي: {"mainText":"...","subText":"...","bg1":"#...","bg2":"#...","textColor":"#...","visual":"...","tips":["...","...","..."]}',
+        messages: [{ role: 'user', content: `موضوع الفيديو: ${topic}\nالأسلوب: ${style}\nاللون المفضل: ${color}` }]
+      })
+    });
+    const data = await r.json();
+    const txt = data.content?.[0]?.text || '';
+    const d = JSON.parse(txt.replace(/```json|```/g,'').trim());
+    thumbHistory.unshift({ ...d, topic, date: new Date().toLocaleDateString('ar') });
+    if (thumbHistory.length > 10) thumbHistory.pop();
+    save();
+    res.innerHTML = `
+      <div class="card">
+        <div style="font-weight:500;margin-bottom:12px">النتيجة لـ: ${topic}</div>
+        <div class="thumb-preview" style="background:linear-gradient(135deg,${d.bg1},${d.bg2})">
+          <div class="thumb-main" style="color:${d.textColor}">${d.mainText}</div>
+          <div class="thumb-sub" style="color:${d.textColor}">${d.subText}</div>
+        </div>
+        <div style="font-size:13px;color:#6b7280;margin-bottom:8px">📸 الصورة المقترحة: ${d.visual}</div>
+        <div style="font-weight:500;margin-bottom:6px">نصائح:</div>
+        ${d.tips.map(t=>`<div class="tip">✅ ${t}</div>`).join('')}
+      </div>`;
+    renderThumbHistory();
+  } catch(e) {
+    res.innerHTML = '<div class="card" style="color:#6b7280;text-align:center">⚠️ المساعد الذكي يحتاج اتصالاً خاصاً. استخدم التطبيق من داخل Claude للحصول على هذه الميزة.</div>';
+  }
+}
+
+function renderThumbHistory() {
+  
