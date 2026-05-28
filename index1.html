@@ -1,0 +1,498 @@
+import { useState, useEffect } from "react";
+
+const SUBJECTS = [
+  { id: "physics", name: "فيزياء", icon: "⚡", color: "#f472b6" },
+  { id: "science", name: "علوم", icon: "🔬", color: "#e879f9" },
+  { id: "math", name: "رياضيات", icon: "📐", color: "#c084fc" },
+  { id: "chemistry", name: "كيمياء", icon: "⚗️", color: "#f9a8d4" },
+  { id: "religion", name: "ديانة", icon: "📖", color: "#fbcfe8" },
+  { id: "english", name: "إنكليزي", icon: "🔤", color: "#f0abfc" },
+];
+
+const QUOTES = [
+  "النجاح ليس نهاية الطريق، والفشل ليس نهاية الأمل 🌸",
+  "كل يوم هو فرصة جديدة لتكوني أفضل من أمس 💪",
+  "أنت أقوى مما تتخيلين، استمري ولا تستسلمي ✨",
+  "الجهد اليوم هو الراحة غداً، ثقي بنفسك 🌷",
+  "حلمك يستحق كل تعب، لا تتوقفي أبداً 🎯",
+  "كل درس تتعلمينه هو خطوة نحو مستقبل أجمل 🌟",
+  "الصبر مفتاح النجاح، وأنت على الطريق الصحيح 🦋",
+];
+
+function getQuoteOfDay() {
+  const idx = new Date().getDay() % QUOTES.length;
+  return QUOTES[idx];
+}
+
+export default function App() {
+  const [screen, setScreen] = useState("home");
+  const [examDate, setExamDate] = useState("");
+  const [daysLeft, setDaysLeft] = useState(null);
+  const [activeSubject, setActiveSubject] = useState(null);
+  const [schedules, setSchedules] = useState({});
+  const [notes, setNotes] = useState({});
+  const [noteInput, setNoteInput] = useState("");
+  const [scheduleInput, setScheduleInput] = useState({ day: "", time: "", duration: "" });
+  const [activeTab, setActiveTab] = useState("schedule");
+
+  useEffect(() => {
+    if (examDate) {
+      const diff = Math.ceil((new Date(examDate) - new Date()) / (1000 * 60 * 60 * 24));
+      setDaysLeft(diff > 0 ? diff : 0);
+    }
+  }, [examDate]);
+
+  const addSchedule = () => {
+    if (!scheduleInput.day || !scheduleInput.time) return;
+    const key = activeSubject;
+    setSchedules(prev => ({
+      ...prev,
+      [key]: [...(prev[key] || []), { ...scheduleInput, id: Date.now() }]
+    }));
+    setScheduleInput({ day: "", time: "", duration: "" });
+  };
+
+  const addNote = () => {
+    if (!noteInput.trim()) return;
+    const key = activeSubject;
+    setNotes(prev => ({
+      ...prev,
+      [key]: [...(prev[key] || []), { text: noteInput, id: Date.now() }]
+    }));
+    setNoteInput("");
+  };
+
+  const deleteNote = (subj, id) => {
+    setNotes(prev => ({ ...prev, [subj]: prev[subj].filter(n => n.id !== id) }));
+  };
+
+  const deleteSchedule = (subj, id) => {
+    setSchedules(prev => ({ ...prev, [subj]: prev[subj].filter(s => s.id !== id) }));
+  };
+
+  const allSchedules = SUBJECTS.flatMap(s =>
+    (schedules[s.id] || []).map(e => ({ ...e, subject: s.name, color: s.color, icon: s.icon }))
+  );
+
+  const styles = {
+    app: {
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #f3e8ff 100%)",
+      fontFamily: "'Segoe UI', sans-serif",
+      direction: "rtl",
+      position: "relative",
+      overflow: "hidden",
+    },
+    watermark: {
+      position: "fixed",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      fontSize: "72px",
+      fontWeight: "900",
+      color: "rgba(236, 72, 153, 0.06)",
+      letterSpacing: "8px",
+      pointerEvents: "none",
+      zIndex: 0,
+      whiteSpace: "nowrap",
+    },
+    content: { position: "relative", zIndex: 1 },
+    header: {
+      background: "linear-gradient(135deg, #ec4899, #a855f7)",
+      padding: "16px 20px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      boxShadow: "0 4px 15px rgba(236,72,153,0.3)",
+    },
+    logo: { color: "#fff", fontSize: "22px", fontWeight: "900", letterSpacing: "3px" },
+    backBtn: {
+      background: "rgba(255,255,255,0.2)",
+      border: "none",
+      color: "#fff",
+      borderRadius: "12px",
+      padding: "6px 14px",
+      cursor: "pointer",
+      fontSize: "14px",
+    },
+    grid: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "16px",
+      padding: "20px",
+    },
+    card: {
+      background: "#fff",
+      borderRadius: "20px",
+      padding: "24px 16px",
+      textAlign: "center",
+      cursor: "pointer",
+      boxShadow: "0 4px 15px rgba(236,72,153,0.1)",
+      border: "1.5px solid rgba(236,72,153,0.15)",
+      transition: "transform 0.15s",
+    },
+    cardIcon: { fontSize: "36px", marginBottom: "8px" },
+    cardTitle: { fontSize: "15px", fontWeight: "700", color: "#be185d" },
+    cardSub: { fontSize: "12px", color: "#9d174d", marginTop: "4px" },
+    section: { padding: "20px" },
+    input: {
+      width: "100%",
+      padding: "12px 16px",
+      borderRadius: "14px",
+      border: "1.5px solid #f9a8d4",
+      background: "#fff",
+      fontSize: "15px",
+      color: "#831843",
+      outline: "none",
+      boxSizing: "border-box",
+      marginBottom: "12px",
+      direction: "rtl",
+    },
+    btn: {
+      background: "linear-gradient(135deg, #ec4899, #a855f7)",
+      color: "#fff",
+      border: "none",
+      borderRadius: "14px",
+      padding: "12px 24px",
+      fontSize: "15px",
+      fontWeight: "700",
+      cursor: "pointer",
+      width: "100%",
+    },
+    counter: {
+      background: "linear-gradient(135deg, #ec4899, #a855f7)",
+      borderRadius: "24px",
+      padding: "32px",
+      textAlign: "center",
+      margin: "20px",
+      color: "#fff",
+    },
+    dayNum: { fontSize: "72px", fontWeight: "900", lineHeight: 1 },
+    dayLabel: { fontSize: "18px", marginTop: "8px", opacity: 0.9 },
+    subjCard: {
+      background: "#fff",
+      borderRadius: "16px",
+      padding: "16px",
+      marginBottom: "12px",
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      cursor: "pointer",
+      boxShadow: "0 2px 10px rgba(236,72,153,0.08)",
+      border: "1.5px solid rgba(236,72,153,0.1)",
+    },
+    subjIcon: { fontSize: "28px" },
+    subjName: { fontSize: "16px", fontWeight: "700", color: "#be185d" },
+    noteItem: {
+      background: "#fdf2f8",
+      borderRadius: "12px",
+      padding: "10px 14px",
+      marginBottom: "8px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      border: "1px solid #f9a8d4",
+    },
+    noteText: { fontSize: "14px", color: "#831843", flex: 1 },
+    delBtn: {
+      background: "none",
+      border: "none",
+      color: "#ec4899",
+      cursor: "pointer",
+      fontSize: "18px",
+      marginRight: "8px",
+    },
+    quote: {
+      background: "linear-gradient(135deg, #fdf2f8, #f3e8ff)",
+      border: "2px solid #f9a8d4",
+      borderRadius: "20px",
+      padding: "28px 24px",
+      margin: "20px",
+      textAlign: "center",
+    },
+    quoteText: { fontSize: "18px", color: "#be185d", fontWeight: "600", lineHeight: 1.6 },
+    tabs: { display: "flex", gap: "8px", marginBottom: "16px" },
+    tab: (active) => ({
+      flex: 1,
+      padding: "10px",
+      borderRadius: "12px",
+      border: "none",
+      cursor: "pointer",
+      fontWeight: "700",
+      fontSize: "13px",
+      background: active ? "linear-gradient(135deg, #ec4899, #a855f7)" : "#fdf2f8",
+      color: active ? "#fff" : "#be185d",
+    }),
+    schedItem: {
+      background: "#fdf2f8",
+      borderRadius: "12px",
+      padding: "10px 14px",
+      marginBottom: "8px",
+      border: "1px solid #f9a8d4",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    allSchedItem: (color) => ({
+      background: "#fff",
+      borderRadius: "12px",
+      padding: "12px 16px",
+      marginBottom: "10px",
+      borderRight: `4px solid ${color}`,
+      boxShadow: "0 2px 8px rgba(236,72,153,0.08)",
+    }),
+  };
+
+  if (screen === "home") return (
+    <div style={styles.app}>
+      <div style={styles.watermark}>LAMA.BAC</div>
+      <div style={styles.content}>
+        <div style={styles.header}>
+          <div style={styles.logo}>🌸 LAMA.BAC</div>
+          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "13px" }}>مرحباً يا لمى 💕</div>
+        </div>
+        <div style={styles.grid}>
+          <div style={styles.card} onClick={() => setScreen("counter")}>
+            <div style={styles.cardIcon}>⏳</div>
+            <div style={styles.cardTitle}>العداد التنازلي</div>
+            <div style={styles.cardSub}>أيام الامتحان</div>
+          </div>
+          <div style={styles.card} onClick={() => setScreen("schedule")}>
+            <div style={styles.cardIcon}>📅</div>
+            <div style={styles.cardTitle}>برنامج الدراسة</div>
+            <div style={styles.cardSub}>نظّمي وقتك</div>
+          </div>
+          <div style={styles.card} onClick={() => setScreen("notes")}>
+            <div style={styles.cardIcon}>📝</div>
+            <div style={styles.cardTitle}>ملاحظاتي</div>
+            <div style={styles.cardSub}>أفكار ومراجعات</div>
+          </div>
+          <div style={styles.card} onClick={() => setScreen("motivation")}>
+            <div style={styles.cardIcon}>💪</div>
+            <div style={styles.cardTitle}>دعم نفسي</div>
+            <div style={styles.cardSub}>اقتباس اليوم</div>
+          </div>
+        </div>
+        <div style={{ margin: "0 20px" }}>
+          {daysLeft !== null && (
+            <div style={{ ...styles.counter, padding: "16px", margin: 0 }}>
+              <span style={{ fontSize: "14px", opacity: 0.9 }}>⏰ تبقى </span>
+              <span style={{ fontSize: "22px", fontWeight: "900" }}>{daysLeft}</span>
+              <span style={{ fontSize: "14px", opacity: 0.9 }}> يوم للامتحان!</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (screen === "counter") return (
+    <div style={styles.app}>
+      <div style={styles.watermark}>LAMA.BAC</div>
+      <div style={styles.content}>
+        <div style={styles.header}>
+          <div style={styles.logo}>⏳ العداد التنازلي</div>
+          <button style={styles.backBtn} onClick={() => setScreen("home")}>← رجوع</button>
+        </div>
+        <div style={styles.section}>
+          <label style={{ display: "block", marginBottom: "8px", color: "#be185d", fontWeight: "700" }}>
+            📅 تاريخ بدء الامتحانات
+          </label>
+          <input type="date" style={styles.input} value={examDate}
+            onChange={e => setExamDate(e.target.value)} />
+        </div>
+        {daysLeft !== null && (
+          <div style={styles.counter}>
+            <div style={styles.dayNum}>{daysLeft}</div>
+            <div style={styles.dayLabel}>
+              {daysLeft === 0 ? "🎉 اليوم هو يوم الامتحان!" : `يوم متبقي حتى الامتحان 📚`}
+            </div>
+            <div style={{ marginTop: "16px", fontSize: "13px", opacity: 0.8 }}>
+              {daysLeft > 0 ? "استغلي كل يوم 💪" : "بالتوفيق يا بطلة! 🌸"}
+            </div>
+          </div>
+        )}
+        {!daysLeft && !examDate && (
+          <div style={{ textAlign: "center", padding: "40px 20px", color: "#be185d", fontSize: "16px" }}>
+            حددي تاريخ امتحاناتك لتبدأ العداد 🌸
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (screen === "schedule") return (
+    <div style={styles.app}>
+      <div style={styles.watermark}>LAMA.BAC</div>
+      <div style={styles.content}>
+        <div style={styles.header}>
+          <div style={styles.logo}>📅 برنامج الدراسة</div>
+          <button style={styles.backBtn} onClick={() => setScreen("home")}>← رجوع</button>
+        </div>
+        <div style={styles.section}>
+          <div style={styles.tabs}>
+            <button style={styles.tab(activeTab === "schedule")} onClick={() => setActiveTab("schedule")}>
+              📚 المواد
+            </button>
+            <button style={styles.tab(activeTab === "final")} onClick={() => setActiveTab("final")}>
+              📋 البرنامج النهائي
+            </button>
+          </div>
+
+          {activeTab === "schedule" && !activeSubject && SUBJECTS.map(s => (
+            <div key={s.id} style={styles.subjCard} onClick={() => setActiveSubject(s.id)}>
+              <span style={styles.subjIcon}>{s.icon}</span>
+              <div>
+                <div style={styles.subjName}>{s.name}</div>
+                <div style={{ fontSize: "12px", color: "#9d174d" }}>
+                  {(schedules[s.id] || []).length} حصة مضافة
+                </div>
+              </div>
+              <span style={{ marginRight: "auto", color: "#ec4899" }}>←</span>
+            </div>
+          ))}
+
+          {activeTab === "schedule" && activeSubject && (() => {
+            const s = SUBJECTS.find(x => x.id === activeSubject);
+            return (
+              <div>
+                <button style={{ ...styles.backBtn, background: "#fdf2f8", color: "#be185d", marginBottom: "16px" }}
+                  onClick={() => setActiveSubject(null)}>
+                  ← {s.name}
+                </button>
+                <select style={styles.input} value={scheduleInput.day}
+                  onChange={e => setScheduleInput(p => ({ ...p, day: e.target.value }))}>
+                  <option value="">📅 اختاري اليوم</option>
+                  {["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"].map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <input type="time" style={styles.input} value={scheduleInput.time}
+                  onChange={e => setScheduleInput(p => ({ ...p, time: e.target.value }))}
+                  placeholder="الوقت" />
+                <input type="text" style={styles.input} value={scheduleInput.duration}
+                  onChange={e => setScheduleInput(p => ({ ...p, duration: e.target.value }))}
+                  placeholder="المدة (مثال: ساعتان)" />
+                <button style={styles.btn} onClick={addSchedule}>+ إضافة حصة</button>
+                <div style={{ marginTop: "16px" }}>
+                  {(schedules[activeSubject] || []).map(item => (
+                    <div key={item.id} style={styles.schedItem}>
+                      <div>
+                        <div style={{ fontWeight: "700", color: "#be185d", fontSize: "14px" }}>{item.day}</div>
+                        <div style={{ fontSize: "12px", color: "#9d174d" }}>🕐 {item.time} {item.duration && `· ${item.duration}`}</div>
+                      </div>
+                      <button style={styles.delBtn} onClick={() => deleteSchedule(activeSubject, item.id)}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {activeTab === "final" && (
+            <div>
+              {allSchedules.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px", color: "#be185d" }}>
+                  لم تضيفي أي حصص بعد 📚
+                </div>
+              ) : allSchedules.map((item, i) => (
+                <div key={i} style={styles.allSchedItem(item.color)}>
+                  <div style={{ fontWeight: "700", color: "#be185d", fontSize: "14px" }}>
+                    {item.icon} {item.subject}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#9d174d", marginTop: "4px" }}>
+                    📅 {item.day} · 🕐 {item.time} {item.duration && `· ${item.duration}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (screen === "notes") return (
+    <div style={styles.app}>
+      <div style={styles.watermark}>LAMA.BAC</div>
+      <div style={styles.content}>
+        <div style={styles.header}>
+          <div style={styles.logo}>📝 ملاحظاتي</div>
+          <button style={styles.backBtn} onClick={() => { setScreen("home"); setActiveSubject(null); }}>← رجوع</button>
+        </div>
+        <div style={styles.section}>
+          {!activeSubject && SUBJECTS.map(s => (
+            <div key={s.id} style={styles.subjCard} onClick={() => setActiveSubject(s.id)}>
+              <span style={styles.subjIcon}>{s.icon}</span>
+              <div>
+                <div style={styles.subjName}>{s.name}</div>
+                <div style={{ fontSize: "12px", color: "#9d174d" }}>
+                  {(notes[s.id] || []).length} ملاحظة
+                </div>
+              </div>
+              <span style={{ marginRight: "auto", color: "#ec4899" }}>←</span>
+            </div>
+          ))}
+
+          {activeSubject && (() => {
+            const s = SUBJECTS.find(x => x.id === activeSubject);
+            return (
+              <div>
+                <button style={{ ...styles.backBtn, background: "#fdf2f8", color: "#be185d", marginBottom: "16px" }}
+                  onClick={() => setActiveSubject(null)}>
+                  ← {s.name}
+                </button>
+                <textarea
+                  style={{ ...styles.input, height: "90px", resize: "none" }}
+                  value={noteInput}
+                  onChange={e => setNoteInput(e.target.value)}
+                  placeholder={`أضيفي ملاحظة عن ${s.name}...`}
+                />
+                <button style={styles.btn} onClick={addNote}>+ إضافة ملاحظة</button>
+                <div style={{ marginTop: "16px" }}>
+                  {(notes[activeSubject] || []).map(n => (
+                    <div key={n.id} style={styles.noteItem}>
+                      <span style={styles.noteText}>{n.text}</span>
+                      <button style={styles.delBtn} onClick={() => deleteNote(activeSubject, n.id)}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (screen === "motivation") return (
+    <div style={styles.app}>
+      <div style={styles.watermark}>LAMA.BAC</div>
+      <div style={styles.content}>
+        <div style={styles.header}>
+          <div style={styles.logo}>💪 دعم نفسي</div>
+          <button style={styles.backBtn} onClick={() => setScreen("home")}>← رجوع</button>
+        </div>
+        <div style={{ padding: "30px 20px", textAlign: "center" }}>
+          <div style={{ fontSize: "64px", marginBottom: "16px" }}>🌸</div>
+          <div style={{ fontSize: "15px", color: "#be185d", marginBottom: "8px", fontWeight: "700" }}>
+            اقتباس اليوم
+          </div>
+        </div>
+        <div style={styles.quote}>
+          <div style={styles.quoteText}>{getQuoteOfDay()}</div>
+        </div>
+        <div style={{ textAlign: "center", padding: "24px", color: "#9d174d", fontSize: "14px" }}>
+          تذكري دائماً: أنت قادرة على تحقيق كل ما تحلمين به 💕
+        </div>
+        <div style={{ padding: "0 20px" }}>
+          {QUOTES.filter((_, i) => i !== new Date().getDay() % QUOTES.length).map((q, i) => (
+            <div key={i} style={{ ...styles.quote, padding: "16px 20px", margin: "0 0 12px" }}>
+              <div style={{ fontSize: "14px", color: "#be185d" }}>{q}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
